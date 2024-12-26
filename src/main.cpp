@@ -21,6 +21,8 @@ All text above, and the splash screen must be included in any redistribution
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544.h>
+#include <RH_RF95.h>
+
 
 // Software SPI (slower updates, more flexible pin options):
 // pin 9 - Serial clock out (SCLK)
@@ -29,6 +31,9 @@ All text above, and the splash screen must be included in any redistribution
 // pin 3 - LCD chip select (CS)
 // pin 2 - LCD reset (RST)
 Adafruit_PCD8544 display = Adafruit_PCD8544(9, 5, 4, 3, 2);
+
+
+RH_RF95 rf95;
 
 // Hardware SPI (faster, but must use certain hardware pins):
 // SCK is LCD serial clock (SCLK) - this is pin 13 on Arduino Uno
@@ -48,6 +53,7 @@ Adafruit_PCD8544 display = Adafruit_PCD8544(9, 5, 4, 3, 2);
 
 #define LOGO16_GLCD_HEIGHT 45
 #define LOGO16_GLCD_WIDTH  45
+
 
 static const unsigned char PROGMEM puppy[] =
 { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
@@ -392,179 +398,100 @@ static const unsigned char PROGMEM crying[] =
 	0x0c, 0x00, 0x00, 0xff, 0xc0, 0x1f, 0xf8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
 
-void testdrawbitmap(const uint8_t *bitmap, uint8_t w, uint8_t h) {
-  uint8_t icons[NUMFLAKES][3];
-  randomSeed(666);     // whatever seed
- 
-  // initialize
-  for (uint8_t f=0; f< NUMFLAKES; f++) {
-    icons[f][XPOS] = random(display.width());
-    icons[f][YPOS] = 0;
-    icons[f][DELTAY] = random(5) + 1;
-    
-    Serial.print("x: ");
-    Serial.print(icons[f][XPOS], DEC);
-    Serial.print(" y: ");
-    Serial.print(icons[f][YPOS], DEC);
-    Serial.print(" dy: ");
-    Serial.println(icons[f][DELTAY], DEC);
-  }
 
-  while (1) {
-    // draw each icon
-    for (uint8_t f=0; f< NUMFLAKES; f++) {
-      display.drawBitmap(icons[f][XPOS], icons[f][YPOS], bitmap, w, h, BLACK);
-    }
-    display.display();
-    delay(200);
 
-    while(Serial.available()) {
-        switch (Serial.read()) {
-          case 'w':display.setContrast(display.getContrast() + 1);
-                   break;
-          case 's':if(display.getContrast()) display.setContrast(display.getContrast() - 1);
-                     break;
-          case 'e':display.setBias(display.getBias() + 1);
-                   break;
-          case 'd':if(display.getBias()) display.setBias(display.getBias() - 1);
-                   break;
-          case 'R':display.setReinitInterval(10);
-                   break;
-          case 'r':display.initDisplay();
-                   display.setReinitInterval(0);
-                   break;
-        }
-    }
-    Serial.print("contrast (w/s): 0x");
-    Serial.print(display.getContrast(), HEX);
-    Serial.print("   bias (e/d): 0x");
-    Serial.print(display.getBias(), HEX);
-    Serial.print("   reinitialize display (r/R): 0x");
-    Serial.print(display.getReinitInterval(), HEX);
-    Serial.print("   \r");
-
-    // then erase it + move it
-    for (uint8_t f=0; f< NUMFLAKES; f++) {
-      display.drawBitmap(icons[f][XPOS], icons[f][YPOS],  poop, w, h, WHITE);
-      // move it
-      icons[f][YPOS] += icons[f][DELTAY];
-      // if its gone, reinit
-      if (icons[f][YPOS] > display.height()) {
-  icons[f][XPOS] = random(display.width());
-  icons[f][YPOS] = 0;
-  icons[f][DELTAY] = random(5) + 1;
-      }
-    }
-   }
-}
-
-void setup()   {
+void setup()   
+{
   Serial.begin(9600);
-Serial.println("PCD test");
+  //Serial.println("PCD test");
   display.begin();
-  // init done
+  display.setContrast(254);
 
-  // you can change the contrast around to adapt the display
-  // for the best viewing!
-  display.setContrast(75);
-
-  display.display(); // show splashscreen
-  delay(2000);
-  display.clearDisplay();   // clears the screen and buffer  
-
-  // miniature bitmap display
-  display.clearDisplay();
-  display.drawBitmap(1, 1,  poop, 45, 45, 1);
-  display.display();
-  // draw a bitmap icon and 'animate' movement
-  //testdrawbitmap(poop, LOGO16_GLCD_WIDTH, LOGO16_GLCD_HEIGHT);
+  if (!rf95.init())
+    Serial.println("init failed");  
 }
 
 
 void loop() 
 {
-  while(1)
-  {
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  poop, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  poop, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  puppy, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  puppy, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  burger, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  burger, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  cat, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  cat, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  monkey, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  monkey, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  skull, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  skull, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  glasses, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  glasses, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  penguin, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  penguin, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  lion, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  lion, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  astronaut, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  astronaut, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  party, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  party, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  cowboy, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  cowboy, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  sad, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  sad, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  gratitude, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  gratitude, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  blowkiss, 45, 45, 1);
-    display.display();
-    delay(2000);
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  blowkiss, 45, 45, 1);
+  display.display();
+  delay(2000);
 
-    display.clearDisplay();
-    display.drawBitmap(1, 1,  crying, 45, 45, 1);
-    display.display();
-    delay(2000);
-        
-  }
-  
+  display.clearDisplay();
+  display.drawBitmap(1, 1,  crying, 45, 45, 1);
+  display.display();
+  delay(2000);
 }
+  
